@@ -1,3 +1,8 @@
+[![CI](https://github.com/AmmannChristian/entropy-publisher-mock/actions/workflows/entropy-publisher-mock-ci-container.yml/badge.svg)](https://github.com/AmmannChristian/entropy-publisher-mock/actions/workflows/entropy-publisher-mock-ci-container.yml)
+[![codecov](https://codecov.io/gh/AmmannChristian/entropy-publisher-mock/graph/badge.svg)](https://app.codecov.io/gh/AmmannChristian/entropy-publisher-mock)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/AmmannChristian/entropy-publisher-mock/blob/main/LICENSE)
+![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
+
 # Entropy Publisher Mock
 
 ## Purpose and Scope
