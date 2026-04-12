@@ -15,7 +15,7 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: entropy-publisher-mock
   EXPECTED_INCREMENT_PS: "5430000000"
-  EXPECTED_JITTER_PS: "2715000000"
+  EXPECTED_DISTRIBUTION: "exponential"
 
 concurrency:
   group: entropy-publisher-mock-${{ github.workflow }}-${{ github.ref }}
@@ -71,7 +71,7 @@ jobs:
           docker build --tag entropy-publisher-mock:ci .
 
           actual_cmd="$(docker image inspect entropy-publisher-mock:ci --format '{{json .Config.Cmd}}')"
-          expected_cmd='["python","entropy-publisher-mock.py","--host","mosquitto","--port","1883","--channels","1-2","--rate","184","--increment-ps","${{ env.EXPECTED_INCREMENT_PS }}","--jitter-ps","${{ env.EXPECTED_JITTER_PS }}"]'
+          expected_cmd='["python","entropy-publisher-mock.py","--host","mosquitto","--port","1883","--channels","1-2","--rate","184","--distribution","${{ env.EXPECTED_DISTRIBUTION }}","--increment-ps","${{ env.EXPECTED_INCREMENT_PS }}"]'
 
           if [[ "$actual_cmd" != "$expected_cmd" ]]; then
             echo "unexpected image CMD"
@@ -88,8 +88,8 @@ jobs:
             --max-events 4 \
             --channels 1-2 \
             --rate 0 \
-            --increment-ps "${{ env.EXPECTED_INCREMENT_PS }}" \
-            --jitter-ps "${{ env.EXPECTED_JITTER_PS }}"
+            --distribution "${{ env.EXPECTED_DISTRIBUTION }}" \
+            --increment-ps "${{ env.EXPECTED_INCREMENT_PS }}"
 
   docker:
     needs: quality
