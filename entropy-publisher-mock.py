@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import random
 import signal
 import sys
@@ -24,6 +25,12 @@ class TimestampGenerator:
     The fine counter advances in picoseconds and wraps at ``max_fine``. Each
     fine-counter rollover increments the coarse counter, which wraps at
     ``max_coarse`` to mirror hardware rollover semantics.
+
+    ``distribution`` selects the inter-arrival model. ``"exponential"`` samples
+    increments from an exponential distribution with mean ``increment_ps``,
+    matching a Poisson arrival process (the physically correct model for
+    radioactive decay and shot-noise entropy sources). ``"uniform"`` retains
+    the legacy deterministic-plus-jitter behavior used by existing tests.
     """
 
     coarse: int = 0
@@ -31,12 +38,24 @@ class TimestampGenerator:
     increment_ps: int = 1000
     jitter_ps: int = 0
     max_fine: int = 100_000
-    max_coarse: int = 16_777_215  # Maximum value representable by a 24-bit counter.
+    # Default chosen so the TDC counter does not wrap during typical test
+    # sessions; real hardware wraps at 24 bit, but the wraparound is exercised
+    # separately via an explicit ``max_coarse`` override in tests.
+    max_coarse: int = (1 << 40) - 1
+    distribution: str = "uniform"
 
     def next(self) -> int:
-        """Return the next timestamp value with configured increment and jitter."""
-        jitter = random.randint(-self.jitter_ps, self.jitter_ps) if self.jitter_ps else 0
-        increment = max(self.increment_ps + jitter, 1)
+        """Return the next timestamp value with configured increment distribution."""
+        if self.distribution == "exponential":
+            # Mean of the exponential equals ``increment_ps``; clamp to >=1 to
+            # preserve strict monotonicity of the emitted timestamp sequence.
+            sampled = random.expovariate(1.0 / self.increment_ps)
+            increment = max(int(math.floor(sampled)), 1)
+        elif self.distribution == "uniform":
+            jitter = random.randint(-self.jitter_ps, self.jitter_ps) if self.jitter_ps else 0
+            increment = max(self.increment_ps + jitter, 1)
+        else:
+            raise ValueError(f"unknown distribution: {self.distribution!r}")
 
         self.fine += increment
 
@@ -112,16 +131,30 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Starting timestamp in picoseconds (default: current time).",
     )
     parser.add_argument(
+        "--distribution",
+        choices=("exponential", "uniform"),
+        default="exponential",
+        help=(
+            "Inter-arrival distribution. 'exponential' samples from a Poisson "
+            "process with mean=increment-ps (physically correct model for a "
+            "true entropy source). 'uniform' uses deterministic increment-ps "
+            "plus uniform jitter-ps for reproducible test fixtures."
+        ),
+    )
+    parser.add_argument(
         "--increment-ps",
         type=int,
         default=1_000,
-        help="Nominal increment per event in picoseconds",
+        help=(
+            "For 'uniform': nominal increment per event in picoseconds. "
+            "For 'exponential': mean inter-arrival time in picoseconds."
+        ),
     )
     parser.add_argument(
         "--jitter-ps",
         type=int,
         default=0,
-        help="Random jitter applied to increment (uniform ± value)",
+        help="Random jitter applied to increment (uniform ± value, 'uniform' only)",
     )
     parser.add_argument(
         "--tls-ca",
@@ -185,12 +218,12 @@ def publish_loop(args: argparse.Namespace) -> None:
 
     client = connect_client(args)
 
-    # Initialize with realistic 24-bit TDC values (not Unix timestamp)
     generator = TimestampGenerator(
         coarse=0,
         fine=0,
         increment_ps=args.increment_ps,
-        jitter_ps=args.jitter_ps
+        jitter_ps=args.jitter_ps,
+        distribution=getattr(args, "distribution", "uniform"),
     )
 
     total_events = 0

@@ -30,6 +30,7 @@ def test_build_arg_parser_defaults(mock_module):
     assert args.qos == 0
     assert args.increment_ps == 1000
     assert args.jitter_ps == 0
+    assert args.distribution == "exponential"
 
 
 def test_build_arg_parser_channels(mock_module):

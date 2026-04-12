@@ -69,3 +69,43 @@ def test_large_increment_multiple_rollovers(mock_module):
     gen.next()  # fine=250 → 2 rollovers → fine=50, coarse=2
     assert gen.fine == 50
     assert gen.coarse == 2
+
+
+def test_exponential_distribution_mean(mock_module):
+    import random as _random
+
+    _random.seed(42)
+    gen = mock_module.TimestampGenerator(
+        increment_ps=10_000,
+        distribution="exponential",
+        max_fine=10**15,
+    )
+    values = [gen.next() for _ in range(20_000)]
+    diffs = [values[i] - values[i - 1] for i in range(1, len(values))]
+    mean = sum(diffs) / len(diffs)
+    # Exponential sample mean converges to the configured mean; allow 5% slack.
+    assert 9_500 < mean < 10_500
+    # Tail is heavier than the [2715, 8145] range a uniform distribution would
+    # produce: at least one sample must exceed 3x the mean.
+    assert max(diffs) > 30_000
+
+
+def test_exponential_strictly_monotonic(mock_module):
+    import random as _random
+
+    _random.seed(0)
+    gen = mock_module.TimestampGenerator(
+        increment_ps=100,
+        distribution="exponential",
+    )
+    prev = 0
+    for _ in range(5000):
+        current = gen.next()
+        assert current > prev
+        prev = current
+
+
+def test_unknown_distribution_raises(mock_module):
+    gen = mock_module.TimestampGenerator(distribution="gaussian")
+    with __import__("pytest").raises(ValueError):
+        gen.next()

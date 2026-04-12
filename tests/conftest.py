@@ -46,6 +46,7 @@ def dry_run_args():
         base_timestamp_ps=None,
         increment_ps=1000,
         jitter_ps=0,
+        distribution="uniform",
         tls_ca=None,
         insecure=False,
         dry_run=True,

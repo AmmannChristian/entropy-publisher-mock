@@ -13,4 +13,4 @@ COPY entropy-publisher-mock.py __init__.py ./
 
 USER 65534:65534
 
-CMD ["python", "entropy-publisher-mock.py", "--host", "mosquitto", "--port", "1883", "--channels", "1-2", "--rate", "184", "--increment-ps", "5430000000", "--jitter-ps", "2715000000"]
+CMD ["python", "entropy-publisher-mock.py", "--host", "mosquitto", "--port", "1883", "--channels", "1-2", "--rate", "184", "--distribution", "exponential", "--increment-ps", "5430000000"]
